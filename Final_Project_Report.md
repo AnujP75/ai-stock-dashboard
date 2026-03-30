@@ -8,8 +8,8 @@ The **AI Stock Signal Dashboard** is an interactive, AI-driven financial analysi
 
 Functionally, the system:
 1. Scans the global market to instantly present the day's **Top Movers** and **Most Discussed** trending assets.
-2. Accepts ticker inputs (or side-by-side comparisons like *AAPL vs TSLA*) and graphs a 30-day interactive historic timeline.
-3. Automatically scrapes live financial headlines and executes an AI sentiment heuristic to objectively grade current news narratives as Bullish or Bearish.
+2. Accepts highly flexible ticker inputs (including cryptos, indices, and side-by-side asset comparatives like *AAPL vs TSLA*) backed by robust string sanitization error-handlers, and smoothly graphs a 30-day interactive historic timeline via a hybrid SQLite caching engine (resolving external API validation bugs that blocked chart seeding by strictly defining historical period bounds). The application intelligently handles newly listed or sparse assets without history by providing seamless dynamic "No Data" UI fallbacks instead of crashing the performance comparison matrices.
+3. Automatically scrapes live financial headlines and executes an AI sentiment heuristic utilizing a heavily customized **Financial Lexicon** to objectively grade current news narratives accurately as Bullish or Bearish rather than relying on weak default general-vocabulary parsers.
 4. Computes advanced risk indicators, including a **Volatility Risk Profiler** (using standard deviation returns) and a **Moving Average Trend Identifier** (analyzing 50-day vs 200-day rolling shifts).
 
 ### 🧑‍🤝‍🧑 Target Audience

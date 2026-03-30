@@ -7,7 +7,9 @@ const sentiment = new Sentiment();
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const ticker = searchParams.get('ticker')?.toUpperCase();
+  const tickerParam = searchParams.get('ticker')?.toUpperCase();
+  const originalTicker = tickerParam?.trim();
+  const ticker = originalTicker?.replace(/[\.\s]+/g, '-');
 
   if (!ticker) {
     return NextResponse.json({ error: 'Ticker is required' }, { status: 400 });
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
     if (historicalData.length < 200) {
       const past = new Date();
       past.setDate(past.getDate() - 365); // Fetch 1 year required for 200d MA
-      const queryOptions = { period1: past };
+      const queryOptions = { period1: past, period2: new Date() };
       try {
           const result = await yahooFinance.historical(ticker, queryOptions);
           const insert = db.prepare('INSERT OR IGNORE INTO historical_data (ticker, date, close) VALUES (?, ?, ?)');
@@ -44,7 +46,16 @@ export async function GET(request: Request) {
     }
 
     // 2. Real-time / Contemporary Data
-    const quote = await yahooFinance.quote(ticker) as any;
+    let quote;
+    try {
+      quote = await yahooFinance.quote(ticker) as any;
+      if (!quote) throw new Error("Stock quote not found");
+    } catch (e: any) {
+      return NextResponse.json(
+        { error: `Could not fetch data for '${originalTicker}'. Please check if the symbol is valid.` }, 
+        { status: 404 }
+      );
+    }
     
     // 3. News & Sentiment (Switched to Yahoo Finance Search for unbreakable reliability)
     let newsArticles: any[] = [];
@@ -53,10 +64,19 @@ export async function GET(request: Request) {
     try {
       const searchRes = await yahooFinance.search(ticker, { quotesCount: 0, newsCount: 5 });
       if (searchRes && searchRes.news) {
+        const financialLexicon = {
+          surge: 3, surges: 3, jump: 2, jumps: 2, gain: 2, gains: 2, rally: 3, rallies: 3, grow: 2, growth: 2,
+          beat: 3, beats: 3, up: 1, higher: 1, buy: 2, upgrade: 3, upgrades: 3, bull: 2, bullish: 3, breakout: 2,
+          profit: 2, profits: 2, dividend: 1, raise: 2, raises: 2, soar: 3, soars: 3, rebound: 2, rebounds: 2,
+          plunge: -3, plunges: -3, drop: -2, drops: -2, fall: -2, falls: -2, loss: -3, losses: -3, down: -1,
+          lower: -1, sell: -2, downgrade: -3, downgrades: -3, bear: -2, bearish: -3, miss: -2, misses: -2,
+          crash: -4, crashes: -4, slump: -3, slumps: -3, warning: -2, lawsuit: -3, probe: -2, investigation: -2,
+          cut: -2, cuts: -2, lawsuits: -3, bankruptcy: -4, fraud: -4, short: -2
+        };
         let totalScore = 0;
         newsArticles = searchRes.news.map((item: any) => {
           const title = item.title;
-          const score = sentiment.analyze(title || '').score;
+          const score = sentiment.analyze(title || '', { extras: financialLexicon }).score;
           totalScore += score;
           return {
             title,
@@ -132,6 +152,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
         ticker,
+        name: quote.shortName || quote.longName || ticker,
         quote: {
             price: quote.regularMarketPrice,
             change: quote.regularMarketChange,

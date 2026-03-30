@@ -9,7 +9,7 @@ This project was built from scratch leveraging a robust **Next.js** (JavaScript/
 ## 📋 Assignment Deliverables Check
 
 ### 1. Fully Working Dashboard
-The dashboard allows users to type any valid US stock ticker (e.g., AAPL, TSLA, NVDA) to instantly see its real-time price, recent trends, and dynamic algorithmic trading signals. 
+The dashboard allows users to type any valid symbol (including US equity like AAPL, Cryptocurrencies like BTC-USD, and Indices like ^GSPC) directly into the search bar. The robust backend automatically sanitizes inputs (converting spaces/dots into hyphens) before fetching real-time prices, historic trends, and algorithmic scaling signals. Faulty tickers gracefully display an auto-dismissing visual error popup instead of crashing the application.
 
 ### 2. Full Code Base & Installation
 The codebase is structured as a modern Next.js 14 App Router application.
@@ -32,15 +32,15 @@ The codebase is structured as a modern Next.js 14 App Router application.
 ### 3. Real-Time Analysis & Static Historic Database
 * **Real-time Engine**: Integrates live market prices via `yahoo-finance2`.
 * **Static Database**: Employs `better-sqlite3` to cache historical stock sequences locally into `data/historical.db`. 
-  * *Bonus Execution*: The database has been cleanly pre-seeded with 1-year of daily trajectory data for 36 major S&P 500 companies. This perfectly satisfies the requirement to have a statical history DB that directly augments real-time live data.
+  * *Bonus Execution*: The database has been cleanly pre-seeded with 1-year of daily trajectory data for 36 major S&P 500 companies. This perfectly satisfies the requirement to have a statical history DB that directly augments real-time live data. Wait-state hydration operations fetch and append dynamic histories utilizing strict bounds (enforcing `period2` caps to bypass the package's deprecation validation errors).
 
 ### 4. One-Page Summary
 
 #### 🎯 Purpose and Functionality
 The dashboard serves as an all-in-one automated equity research tool mapping out complex data visually. Features include:
 - **Price & Change**: Current live price and daily percentages.
-- **Trend Charts**: A 30-day interactive historical trend line chart.
-- **News Sentiment AI**: Evaluates the 5 most recent financial headlines using a natural language sentiment dictionary to grade news objectively (Bullish vs Bearish).
+- **Trend Charts**: A 30-day interactive historical trend line chart, complete with responsive empty-state fallbacks for sparse or unsupported symbols lacking explicitly charted metrics.
+- **News Sentiment AI**: Evaluates the 5 most recent financial headlines using a deeply customized Natural Language Processing lexicons designed heavily around financial metrics (properly weighing terms like "surge", "plunge", "beat", "rally") to algorithmically grade current news events objectively.
 - **Volatility & Risk Indicator**: Computes the 30-day standard deviation of daily returns to instantly classify assets as High, Moderate, or Low Risk.
 - **Moving Average Trend**: Calculates 50-day vs 200-day rolling averages to mathematically determine upward/downward macro trends.
 - **Master Trading Signal**: Computes a dynamic **BUY**, **HOLD**, or **SELL** recommendation resolving momentum and news sentiment variables.

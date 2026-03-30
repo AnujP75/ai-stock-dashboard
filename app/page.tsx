@@ -14,6 +14,7 @@ import {
 
 interface StockData {
   ticker: string;
+  name?: string;
   quote: {
     price: number;
     change: number;
@@ -52,6 +53,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Auto-clear error and reset to main page
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (error) {
+      timer = setTimeout(() => {
+        setError('');
+        setTicker('');
+        setTickerInput('');
+      }, 3500);
+    }
+    return () => clearTimeout(timer);
+  }, [error]);
+
   // Load Market Pulse Data
   useEffect(() => {
     async function fetchMarket() {
@@ -72,8 +86,8 @@ export default function Dashboard() {
 
   const fetchSingleStock = async (symbol: string) => {
     const res = await fetch(`/api/stock?ticker=${symbol}`);
-    if (!res.ok) throw new Error(`Failed to fetch ${symbol}`);
     const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `Failed to fetch ${symbol}`);
     if (json.error) throw new Error(json.error);
     return json as StockData;
   };
@@ -121,6 +135,9 @@ export default function Dashboard() {
 
   const getPerformanceDifference = () => {
     if (!data || !compareData) return null;
+    if (!data.historical?.length && !compareData.historical?.length) return `Could not fetch historical data for ${data.ticker} and ${compareData.ticker}.`;
+    if (!data.historical?.length) return `Could not fetch historical data for ${data.ticker}.`;
+    if (!compareData.historical?.length) return `Could not fetch historical data for ${compareData.ticker}.`;
     
     // Performance typically over 30 days is measured using the start and end of historical array
     const getChange = (d: StockData) => {
@@ -163,10 +180,13 @@ export default function Dashboard() {
           <p style={{ fontSize: '0.85rem', color: '#8b949e', marginTop: '0.2rem' }}>
             💡 To compare two assets side-by-side, type the <strong>vs</strong> keyword (e.g., AAPL vs TSLA)
           </p>
+          <p style={{ fontSize: '0.8rem', color: '#8b949e', marginTop: '0.1rem' }}>
+            📍 Supports US Region Stocks (NYSE/NASDAQ), Crypto (BTC-USD), and Indices (^GSPC)
+          </p>
         </form>
       </div>
 
-      {error && <div className="error-message badge">{error}</div>}
+      {error && <div className="error-popup">{error}</div>}
 
       {loading && ticker ? (
         <div className="loading">Analyzing market data for {ticker}...</div>
@@ -175,6 +195,9 @@ export default function Dashboard() {
           <div className="main-column">
             
             <div className="glass-panel">
+              <h2 className="title" style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#e6edf3', fontSize: '1.5rem' }}>
+                {data.name || data.ticker} {compareData ? `vs ${compareData.name || compareData.ticker}` : ''}
+              </h2>
               {/* PRIMARY STOCK METRICS */}
               <div className="metric-grid" style={{ marginBottom: compareData ? '1rem' : '2rem' }}>
                 <div className="metric-card">
@@ -234,50 +257,56 @@ export default function Dashboard() {
               )}
 
               <div style={{ height: 350, marginTop: '2rem' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                    {/* Combine datasets by letting Recharts process them via Line data={} prop, XAxis uses common date from primary */}
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#8b949e" 
-                      tickFormatter={(val) => val ? val.substring(5) : ''} 
-                      allowDuplicatedCategory={false}
-                    />
-                    <YAxis yAxisId="left" domain={['auto', 'auto']} stroke="#8b949e" tickFormatter={(val) => `$${val}`}/>
-                    {compareData && <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} stroke="#3fb950" tickFormatter={(val) => `$${val}`}/>}
-                    
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Legend />
-                    <Line 
-                      yAxisId="left"
-                      data={data.historical}
-                      name={data.ticker}
-                      type="monotone" 
-                      dataKey="close" 
-                      stroke="#58a6ff" 
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 8, fill: '#58a6ff' }}
-                    />
-                    {compareData && (
+                {(data.historical?.length ?? 0) > 0 || (compareData?.historical?.length ?? 0) > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                      {/* Combine datasets by letting Recharts process them via Line data={} prop, XAxis uses common date from primary */}
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#8b949e" 
+                        tickFormatter={(val) => val ? val.substring(5) : ''} 
+                        allowDuplicatedCategory={false}
+                      />
+                      <YAxis yAxisId="left" domain={['auto', 'auto']} stroke="#8b949e" tickFormatter={(val) => `$${val}`}/>
+                      {compareData && <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} stroke="#3fb950" tickFormatter={(val) => `$${val}`}/>}
+                      
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                      <Legend />
                       <Line 
-                        yAxisId="right"
-                        data={compareData.historical}
-                        name={compareData.ticker}
+                        yAxisId="left"
+                        data={data.historical}
+                        name={data.ticker}
                         type="monotone" 
                         dataKey="close" 
-                        stroke="#3fb950" 
+                        stroke="#58a6ff" 
                         strokeWidth={3}
                         dot={false}
-                        activeDot={{ r: 8, fill: '#3fb950' }}
+                        activeDot={{ r: 8, fill: '#58a6ff' }}
                       />
-                    )}
-                  </LineChart>
-                </ResponsiveContainer>
+                      {compareData && (
+                        <Line 
+                          yAxisId="right"
+                          data={compareData.historical}
+                          name={compareData.ticker}
+                          type="monotone" 
+                          dataKey="close" 
+                          stroke="#3fb950" 
+                          strokeWidth={3}
+                          dot={false}
+                          activeDot={{ r: 8, fill: '#3fb950' }}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#8b949e', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '8px', fontSize: '1.1rem' }}>
+                    No historical chart data available for this timeline.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -427,7 +456,7 @@ export default function Dashboard() {
 
       <div className="disclaimer" style={{ marginTop: '2rem' }}>
         <strong>⚠️ Warning & Disclaimer</strong><br/>
-        This dashboard is for informational and educational purposes only. It does not constitute professional, legal, financial, or operational advice. Users rely on this dashboard at their own risk.<br/><br/>
+        This dashboard is for informational and educational purposes only. The AI trading signals and risk analysis metrics do not constitute professional, legal, financial, or operational advice. Users rely on this dashboard and its automated indicators at their own risk. The NLP sentiment algorithm uniquely relies on a locally customized financial lexicon to objectively evaluate bias.<br/><br/>
         <strong>🔒 Data Privacy & Intellectual Property</strong><br/>
         No user search data or personal information is collected, stored, or sold. All financial data and news headlines are sourced publicly from Yahoo Finance and remain the exclusive intellectual property of their respective owners. Data is utilized strictly under Fair Use for educational purposes.
       </div>
