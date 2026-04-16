@@ -18,21 +18,27 @@ The codebase is structured as a modern Next.js 14 App Router application.
 - Node.js (v18 or newer)
 - npm or yarn
 
-**Setup Instructions:**
-1. Clone the repository and navigate to the folder.
-2. Install dependencies:
+**Setup & Installation Instructions:**
+1. Clone the repository and navigate to the project directory:
+   ```bash
+   git clone https://github.com/AnujP75/ai-stock-dashboard.git
+   cd ai-stock-dashboard
+   ```
+2. Install the necessary dependencies:
+   ```bash
    npm install
    ```
-3. Start the development server:
+3. Start the Next.js development server:
    ```bash
    npm run dev
    ```
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser to view the application.
 
-### 3. Real-Time Analysis & Static Historic Database
-* **Real-time Engine**: Integrates live market prices via `yahoo-finance2`.
-* **Static Database**: Employs `better-sqlite3` to cache historical stock sequences locally into `data/historical.db`. 
-  * *Bonus Execution*: The database has been cleanly pre-seeded with 1-year of daily trajectory data for 36 major S&P 500 companies. This perfectly satisfies the requirement to have a statical history DB that directly augments real-time live data. Wait-state hydration operations fetch and append dynamic histories utilizing strict bounds (enforcing `period2` caps to bypass the package's deprecation validation errors).
+**Deployment & Database Notes for Replication:**
+* **Real-time Engine**: Integrates live market prices via `yahoo-finance2` seamlessly.
+* **Hybrid Database Strategy**: 
+  * *Local Replication:* Employs `better-sqlite3` to cache historical stock data locally into `data/historical.db`. The application checks the database for staleness automatically. If data is missing or older than a few days, it automatically fetches fresh 1-year trajectory data from Yahoo Finance and caches it, serving a trimmed 1-month trajectory chart to the UI.
+  * *Serverless Deployment (Vercel):* On serverless platforms where local databases are read-only, the application gracefully catches write-errors and serves live, freshly fetched API queries directly in-memory. This ensures the deployed dashboard natively updates daily without any developer intervention or cron-jobs.
 
 ### 4. One-Page Summary
 

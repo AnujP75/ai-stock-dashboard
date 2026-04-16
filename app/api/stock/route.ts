@@ -25,23 +25,48 @@ export async function GET(request: Request) {
     const stmt = db.prepare('SELECT date, close FROM historical_data WHERE ticker = ? ORDER BY date ASC');
     let historicalData = stmt.all(ticker) as { date: string, close: number }[];
 
-    // If static db is empty for this ticker, populate it once
-    if (historicalData.length < 200) {
+    // Determine if we need to fetch new data (either missing or stale)
+    let needsUpdate = historicalData.length < 200;
+    if (!needsUpdate && historicalData.length > 0) {
+      const lastDateStr = historicalData[historicalData.length - 1].date;
+      const lastDate = new Date(lastDateStr);
+      // Check if the data is older than ~2 days (to account for weekends)
+      const timeDiff = new Date().getTime() - lastDate.getTime();
+      const daysDiff = timeDiff / (1000 * 3600 * 24);
+      if (daysDiff > 2) { 
+        needsUpdate = true;
+      }
+    }
+
+    // Force an update if stale or empty
+    if (needsUpdate) {
       const past = new Date();
       past.setDate(past.getDate() - 365); // Fetch 1 year required for 200d MA
       const queryOptions = { period1: past, period2: new Date() };
       try {
           const result = await yahooFinance.historical(ticker, queryOptions);
-          const insert = db.prepare('INSERT OR IGNORE INTO historical_data (ticker, date, close) VALUES (?, ?, ?)');
-          const insertMany = db.transaction((rows) => {
-            for (const row of rows) {
-              insert.run(ticker, row.date.toISOString().split('T')[0], row.close);
-            }
-          });
-          insertMany(result);
-          historicalData = stmt.all(ticker) as { date: string, close: number }[];
+          
+          try {
+            const insert = db.prepare('INSERT OR REPLACE INTO historical_data (ticker, date, close) VALUES (?, ?, ?)');
+            const insertMany = db.transaction((rows) => {
+              for (const row of rows) {
+                insert.run(ticker, row.date.toISOString().split('T')[0], row.close);
+              }
+            });
+            insertMany(result);
+            // Re-query from DB to ensure format matches
+            historicalData = stmt.all(ticker) as { date: string, close: number }[];
+          } catch (dbErr) {
+            // On deployed Vercel apps, SQLite is read-only. We catch the attempt-to-write error
+            // and simply fall back to the live data stored in memory for this request.
+            console.warn("Could not write to local DB (expected on Vercel). Falling back to live data in-memory.");
+            historicalData = result.map((row: any) => ({
+              date: row.date.toISOString().split('T')[0],
+              close: row.close
+            }));
+          }
       } catch (e) {
-          console.warn("Could not fetch historical for DB seeding", e);
+          console.warn("Could not fetch historical data from Yahoo Finance", e);
       }
     }
 
@@ -147,8 +172,8 @@ export async function GET(request: Request) {
     }
 
     // Trim historical data payload so we don't send 365 days of graph data to UI, 
-    // we only want a 30-day trend chart.
-    const chartData = historicalData.slice(-30);
+    // we only want a roughly 1-month trend chart (approx 22 trading days).
+    const chartData = historicalData.slice(-22);
 
     return NextResponse.json({
         ticker,

@@ -272,6 +272,7 @@ export default function Dashboard() {
                       {compareData && <YAxis yAxisId="right" orientation="right" domain={['auto', 'auto']} stroke="#3fb950" tickFormatter={(val) => `$${val}`}/>}
                       
                       <Tooltip 
+                        formatter={(value: any) => [`$${Number(value).toFixed(2)}`]}
                         contentStyle={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '8px' }}
                         itemStyle={{ color: '#fff' }}
                       />
