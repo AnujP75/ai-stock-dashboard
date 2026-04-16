@@ -37,7 +37,7 @@ The codebase is structured as a modern Next.js 14 App Router application.
 **Deployment & Database Notes for Replication:**
 * **Real-time Engine**: Integrates live market prices via `yahoo-finance2` seamlessly.
 * **Hybrid Database Strategy**: 
-  * *Local Replication:* Employs `better-sqlite3` to cache historical stock data locally into `data/historical.db`. The application checks the database for staleness automatically. If data is missing or older than a few days, it automatically fetches fresh 1-year trajectory data from Yahoo Finance and caches it, serving a trimmed 1-month trajectory chart to the UI.
+  * *Local Replication:* Employs `better-sqlite3` to cache historical stock data locally into `data/historical.db`. The application checks the database for staleness automatically. If data is missing or older than a few days, it automatically fetches fresh 1-year trajectory data from Yahoo Finance and caches it, serving a 1-year trajectory chart to the UI.
   * *Serverless Deployment (Vercel):* On serverless platforms where local databases are read-only, the application gracefully catches write-errors and serves live, freshly fetched API queries directly in-memory. This ensures the deployed dashboard natively updates daily without any developer intervention or cron-jobs.
 
 ### 4. One-Page Summary

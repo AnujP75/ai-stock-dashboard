@@ -171,9 +171,9 @@ export async function GET(request: Request) {
       else volatilityInsight = `${ticker} shows low volatility — suitable for conservative investors.`;
     }
 
-    // Trim historical data payload so we don't send 365 days of graph data to UI, 
-    // we only want a roughly 1-month trend chart (approx 22 trading days).
-    const chartData = historicalData.slice(-22);
+    // Trim historical data payload so we don't send too much graph data to UI, 
+    // we only want a roughly 1-year trend chart (approx 252 trading days).
+    const chartData = historicalData.slice(-252);
 
     return NextResponse.json({
         ticker,
