@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -157,6 +157,38 @@ export default function Dashboard() {
     return `${data.ticker} is ${p1 >= 0 ? 'up' : 'down'} ${p1 >= 0 ? '+' : ''}${p1.toFixed(2)}% while ${compareData.ticker} is ${p2 >= 0 ? 'up' : 'down'} ${p2 >= 0 ? '+' : ''}${p2.toFixed(2)}% this month. ${winner} outperformed by ${diff.toFixed(2)}%.`;
   };
 
+  // Combine primary and secondary data so Recharts can properly align identical dates on the X-axis
+  const combinedChartData = useMemo(() => {
+    if (!data?.historical) return [];
+    
+    const dataMap = new Map<string, any>();
+    
+    // Add primary stock data
+    data.historical.forEach((item) => {
+      dataMap.set(item.date, {
+        date: item.date,
+        primaryClose: item.close,
+      });
+    });
+    
+    // Add compare stock data if it exists
+    if (compareData?.historical) {
+      compareData.historical.forEach((item) => {
+        if (dataMap.has(item.date)) {
+          const existing = dataMap.get(item.date);
+          existing.secondaryClose = item.close;
+        } else {
+          dataMap.set(item.date, {
+            date: item.date,
+            secondaryClose: item.close,
+          });
+        }
+      });
+    }
+    
+    return Array.from(dataMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  }, [data?.historical, compareData?.historical]);
+
   return (
     <div className="container" style={{ paddingBottom: '4rem' }}>
       <header className="header">
@@ -259,7 +291,7 @@ export default function Dashboard() {
               <div style={{ height: 350, marginTop: '2rem' }}>
                 {(data.historical?.length ?? 0) > 0 || (compareData?.historical?.length ?? 0) > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <LineChart data={combinedChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                       {/* Combine datasets by letting Recharts process them via Line data={} prop, XAxis uses common date from primary */}
                       <XAxis 
@@ -279,10 +311,9 @@ export default function Dashboard() {
                       <Legend />
                       <Line 
                         yAxisId="left"
-                        data={data.historical}
                         name={data.ticker}
                         type="monotone" 
-                        dataKey="close" 
+                        dataKey="primaryClose" 
                         stroke="#58a6ff" 
                         strokeWidth={3}
                         dot={false}
@@ -291,10 +322,9 @@ export default function Dashboard() {
                       {compareData && (
                         <Line 
                           yAxisId="right"
-                          data={compareData.historical}
                           name={compareData.ticker}
                           type="monotone" 
-                          dataKey="close" 
+                          dataKey="secondaryClose" 
                           stroke="#3fb950" 
                           strokeWidth={3}
                           dot={false}
